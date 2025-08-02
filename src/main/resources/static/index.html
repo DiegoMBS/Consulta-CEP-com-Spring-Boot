@@ -64,7 +64,7 @@
         }
 
         try {
-            const response = await fetch(`http://localhost:8090/consulta-cep/${cep}`);
+            const response = await fetch(`http://localhost:8080/consulta-cep/${cep}`);
             if (!response.ok) {
                 throw new Error('Erro ao buscar o CEP. Verifique se o servidor está ativo.');
             }
