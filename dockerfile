@@ -1,14 +1,23 @@
-# Fase de construção
-FROM maven:3.8.6-openjdk-17 AS builder
-WORKDIR /app
-COPY pom.xml .
-RUN mvn -B dependency:resolve
-COPY src ./src
-RUN mvn -B package
+# Use uma imagem base com Java 17
+FROM eclipse-temurin:17-jdk-alpine
 
-# Fase de produção
-FROM openjdk:17-jdk-slim
+# Crie e defina o diretório de trabalho
 WORKDIR /app
-COPY --from=builder /app/target/*.jar app.jar
+
+# Copie o arquivo pom.xml e outros arquivos necessários
+COPY pom.xml ./
+
+# Baixe as dependências do Maven
+RUN ./mvnw dependency:go-offline
+
+# Copie o código da aplicação para a imagem
+COPY src ./src
+
+# Compile a aplicação
+RUN ./mvnw package -DskipTests
+
+# Exponha a porta configurada na aplicação
 EXPOSE 8090
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Comando para rodar a aplicação
+CMD ["java", "-jar", "target/cep-0.0.1-SNAPSHOT.jar"]
