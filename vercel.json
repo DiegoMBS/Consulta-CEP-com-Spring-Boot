@@ -1,20 +1,4 @@
 {
-  "version: 2",
-  "builds": [
-    {
-      "src": "pom.xml",
-      "use": "@vercel/java"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/pom.xml"
-    }
-  ]
-}
-
-    {
       "version": 2,
       "builds": [
         {
@@ -33,3 +17,4 @@
         }
       ]
     }
+
