@@ -1,20 +1,17 @@
 {
-      "version": 2,
-      "builds": [
-        {
-          "src": "src/main/java/**/*.java",
-          "use": "@vercel/java",
-          "config": {
-            "buildCommand": "mvn clean install",
-            "outputDirectory": "target"
-          }
-        }
-      ],
-      "routes": [
-        {
-          "src": "/.*",
-          "dest": "target/classes/com/diegomb/cep/CepApplication"
-        }
-      ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "pom.xml",
+      "use": "@vercel/java"
     }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
+}
+
 
