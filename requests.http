@@ -1,5 +1,30 @@
 ### GET request to example server
-GET https://fresh-libby-dmsilva-93394af4.koyeb.app/consulta-cep/08461510
+GET http://localhost:8080/consulta-cep/08461510
  ?generated-in=IntelliJ IDEA
 
 ###
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

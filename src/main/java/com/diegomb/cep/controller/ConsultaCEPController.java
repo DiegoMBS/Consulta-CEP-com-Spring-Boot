@@ -17,14 +17,13 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/consulta-cep")
-@CrossOrigin(origins = "https://fresh-libby-dmsilva-93394af4.koyeb.app/consulta-cep/") // Permite requisições de qualquer domínio
+@CrossOrigin(origins = "*") // Permite requisições de qualquer domínio
 public class ConsultaCEPController {
-    @GetMapping("{cep}")
+    @GetMapping("/{cep}")
     public CepResultDTO consultaCEP(@PathVariable("cep") String cep) {
         RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<CepResultDTO> resp =
-                restTemplate.getForEntity("https://viacep.com.br/ws/{cep}/json/", CepResultDTO.class, cep);
+        ResponseEntity<CepResultDTO> resp = restTemplate.getForEntity("https://viacep.com.br/ws/{cep}/json/",
+                CepResultDTO.class, cep);
         return resp.getBody();
     }
 }
-

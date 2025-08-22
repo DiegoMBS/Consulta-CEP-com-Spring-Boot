@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Consulta CEP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+
+    h1 {
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    input {
+      padding: 10px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px;
+      width: 100%;
+      border: none;
+      border-radius: 5px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .resultado {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #f0f0f0;
+      display: none;
+    }
+
+    .erro {
+      color: red;
+      font-weight: bold;
+    }
+
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #4CAF50;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 15px auto;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Consulta CEP</h1>
+  <div class="card">
+    <input type="text" id="cep" placeholder="CEP (00000-000)" maxlength="9" inputmode="numeric"
+      autocomplete="postal-code" />
+    <button id="btnConsultar" onclick="consultarCEP()">Consultar</button>
+
+    <div class="loader" id="loader"></div>
+    <div class="resultado" id="resultado"></div>
+  </div>
+
+  <script>
+    async function consultarCEP() {
+      const raw = document.getElementById("cep").value.trim();
+      const cep = raw.replace(/\D/g, ""); // mantém somente dígitos (aceita 01001-000)
+      const resultado = document.getElementById("resultado");
+      const loader = document.getElementById("loader");
+      const btn = document.getElementById("btnConsultar");
+
+      resultado.style.display = "none";
+      resultado.innerHTML = "";
+
+      if (!/^\d{8}$/.test(cep)) {
+        resultado.style.display = "block";
+        resultado.innerHTML = "<p class='erro'>Digite um CEP válido com 8 dígitos.</p>";
+        return;
+      }
+
+      loader.style.display = "block";
+      if (btn) { btn.disabled = true; }
+
+      try {
+        // Base local por padrão: usa caminho relativo quando servido pelo Spring Boot (porta 8080)
+        // ou chama o backend local em http://<host>:8080 quando aberta via Live Server/file://
+        const isFile = window.location.protocol === 'file:';
+        const onPort8080 = !isFile && window.location.port === '8080';
+        const host = window.location.hostname || 'localhost';
+        const baseUrl = onPort8080 ? '' : `http://${host}:8080`;
+        const apiUrl = `${baseUrl}/consulta-cep/${cep}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json' }
+        });
+        loader.style.display = "none";
+
+        if (!response.ok) {
+          const httpErr = new Error(`Serviço indisponível (HTTP ${response.status}).`);
+          httpErr.code = 'HTTP_ERROR';
+          httpErr.status = response.status;
+          throw httpErr;
+        }
+
+        const data = await response.json();
+
+        // Trata CEP inválido do ViaCEP (resposta sem campo 'cep' ou 'erro' = true)
+        if (!data || data.erro === true || !data.cep) {
+          const cepErr = new Error("CEP não encontrado. Confira se digitou os 8 dígitos corretos.");
+          cepErr.code = 'CEP_NOT_FOUND';
+          throw cepErr;
+        }
+
+        resultado.style.display = "block";
+        resultado.innerHTML = `
+          <p><strong>CEP:</strong> ${data.cep || "—"}</p>
+          <p><strong>Logradouro:</strong> ${data.logradouro || "—"}</p>
+          <p><strong>Complemento:</strong> ${data.complemento || "—"}</p>
+          <p><strong>Bairro:</strong> ${data.bairro || "—"}</p>
+          <p><strong>Cidade:</strong> ${data.localidade || "—"}</p>
+          <p><strong>Estado (UF):</strong> ${data.uf || "—"}</p>
+          <p><strong>IBGE:</strong> ${data.ibge || "—"}</p>
+          <p><strong>GIA:</strong> ${data.gia || "—"}</p>
+          <p><strong>DDD:</strong> ${data.ddd || "—"}</p>
+          <p><strong>SIAFI:</strong> ${data.siafi || "—"}</p>
+        `;
+      } catch (error) {
+        loader.style.display = "none";
+        resultado.style.display = "block";
+        const isNetwork = (error && (error.name === 'TypeError' || /Network|Failed to fetch/i.test(error.message)));
+        const isCep = (error && (error.code === 'CEP_NOT_FOUND' || /CEP (não encontrado|inválido)/i.test(error.message)));
+        const isHttp = (error && error.code === 'HTTP_ERROR');
+
+        let msg = (error && error.message) ? error.message : 'Falha ao consultar o CEP.';
+        if (isCep) {
+          // Mensagem curta e direta para CEP inexistente
+          msg = "CEP não encontrado. Confira se digitou os 8 dígitos corretos.";
+        } else if (isNetwork || isHttp) {
+          // Dicas para ambiente local
+          const isFile = window.location.protocol === 'file:';
+          const onPort8080 = !isFile && window.location.port === '8080';
+          const dicaExecucao = " Verifique se o backend está em execução em http://localhost:8080.";
+          const dicaAcesso = onPort8080 ? "" : " Abra a página via http://localhost:8080/ (servida pelo Spring Boot) ou mantenha o Live Server e o backend rodando.";
+          msg = `${msg}${dicaExecucao}${dicaAcesso ? ' ' + dicaAcesso : ''}`;
+        }
+        resultado.innerHTML = `<p class='erro'>${msg}</p>`;
+      } finally {
+        if (btn) { btn.disabled = false; }
+      }
+    }
+
+    // Máscara de CEP (00000-000) e submit com Enter
+    (function setupCepInput() {
+      const input = document.getElementById('cep');
+      if (!input) return;
+
+      const applyMask = (value) => {
+        const digits = value.replace(/\D/g, '').slice(0, 8);
+        if (digits.length <= 5) return digits;
+        return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+      };
+
+      input.addEventListener('input', (e) => {
+        const start = e.target.selectionStart;
+        const end = e.target.selectionEnd;
+        const before = e.target.value;
+        e.target.value = applyMask(e.target.value);
+        // Ajuste simples do cursor (leva ao fim se mudou muito)
+        if (e.target.value.length < before.length) {
+          e.target.setSelectionRange(start, end);
+        } else {
+          e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          consultarCEP();
+        }
+      });
+    })();
+  </script>
+</body>
+
+</html>
